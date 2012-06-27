@@ -11,23 +11,31 @@ The API is simple. You can `incr` or `set` values. Use the standard `cat`
 command or whichever tool you prefer to read out the data.
 
 You can also run this module as a command and it will read the data from your
-stat pipes and serve it up as JSON via HTTP.
+stat pipes and serve it up as JSON via HTTP. It tries to gracefully handle
+dead pipes, and will unlink them if it finds any.
 
-Don't use this for recording values that required many degrees of precision.
-Some precision is lost when the values are read from the named pipe.
+Don't use this library for recording values that required many degrees of
+precision.  Some precision is lost when the values are read from the named
+pipe.
 
 """
 import atexit
 import os
-import simplejson
+import signal
 import threading
 import time
+import traceback
 import urlparse
+
+import simplejson
 
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from collections import defaultdict
 
+
 STATS_ROOT = '/tmp/stats-pipe'
+INTERRUPTED_SYSTEM_CALL = 4
+PIPE_OPEN_TIMEOUT = 0.1
 
 # Developer API
 # =============
@@ -138,12 +146,43 @@ def _load_all_from_pipes():
     all_stats = defaultdict(float)
     if os.path.exists(STATS_ROOT):
         for filename in os.listdir(STATS_ROOT):
-            pipe = open(os.path.join(STATS_ROOT, filename))
-            for line in pipe:
-                cleaned = line.strip()
-                name, value = cleaned.rsplit(':', 1)
-                all_stats[name.strip()] += float(value.strip())
+            pipe_path = os.path.join(STATS_ROOT, filename)
+            _set_pipe_open_timeout(PIPE_OPEN_TIMEOUT)
+            try:
+                with open(pipe_path) as pipe:
+                    _clear_pipe_open_timeout()
+                    for line in pipe:
+                        cleaned = line.strip()
+                        name, value = cleaned.rsplit(':', 1)
+                        all_stats[name.strip()] += float(value.strip())
+            except IOError, e:
+                if e.errno == INTERRUPTED_SYSTEM_CALL:
+                    # Our timeout fired - no one is writing to this pipe.
+                    # Let's try and clean it up.
+                    try:
+                        os.unlink(pipe_path)
+                    except:
+                        traceback.print_exc()
+                else:
+                    raise
     return dict(all_stats)
+
+def _set_pipe_open_timeout(timeout):
+    interval = 0
+
+    signal.setitimer(signal.ITIMER_REAL, timeout, interval)
+
+    if timeout:
+        def _noop(sig, frame):
+            # Don't do anything with the signal - just pass on.
+            pass
+        signal.signal(signal.SIGALRM, _noop)
+    else:
+        signal.signal(signal.SIGALRM, signal.SIG_DFL)
+
+
+def _clear_pipe_open_timeout():
+    _set_pipe_open_timeout(0)
 
 if __name__ == '__main__':
     import optparse
