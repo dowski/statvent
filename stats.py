@@ -20,6 +20,7 @@ pipe.
 
 """
 import atexit
+import optparse
 import os
 import signal
 import threading
@@ -184,9 +185,7 @@ def _set_pipe_open_timeout(timeout):
 def _clear_pipe_open_timeout():
     _set_pipe_open_timeout(0)
 
-if __name__ == '__main__':
-    import optparse
-
+def main():
     parser = optparse.OptionParser()
 
     parser.add_option(
@@ -201,3 +200,6 @@ if __name__ == '__main__':
     )
     opts, args = parser.parse_args()
     http_stat_publisher(opts.ip, opts.port, opts.path)
+
+if __name__ == '__main__':
+    main()
