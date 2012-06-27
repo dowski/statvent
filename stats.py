@@ -4,8 +4,8 @@ The goal of this module is to make it as simple as possible to record stats
 about your running application.
 
 The stats are written to a named pipe. The named pipes are stored in
-/tmp/stats-pipe. They are named "<PID>.stats". All values are stored as
-floating point numbers.
+/tmp/stats-pipe. They are named "<PID>.stats". Integer and floating point
+values are supported.
 
 The API is simple. You can `incr` or `set` values. Use the standard `cat`
 command or whichever tool you prefer to read out the data.
@@ -44,18 +44,14 @@ PIPE_OPEN_TIMEOUT = 0.1
 def set(name, value):
     """Set the given stat name to value.
 
-    The value will be coerced to a float.
-
     """
-    _stats[name] = float(value)
+    _stats[name] = value
 
-def incr(name, value=1.0):
+def incr(name, value=1):
     """Increment the given stat name by value.
 
-    The value will be coerced to a float.
-
     """
-    _stats[name] += float(value)
+    _stats[name] += value
 
 def get_all():
     """Return a dictionary of the recorded stats."""
@@ -116,7 +112,7 @@ def http_stat_publisher(ip='', port=7828, path='/stats'):
 # Private Code
 # ============
 
-_stats = defaultdict(float)
+_stats = defaultdict(int)
 _recorder = None
 
 class _StatRecorder(threading.Thread):
@@ -139,12 +135,15 @@ class _StatRecorder(threading.Thread):
             os.mkfifo(self.statpath)
             f = open(self.statpath, 'w')
             for name, value in get_all().iteritems():
-                f.write('%s: %f\n' % (name, value))
+                if isinstance(value, float):
+                    f.write('%s: %f\n' % (name, value))
+                elif isinstance(value, int):
+                    f.write('%s: %d\n' % (name, value))
             f.close()
             os.unlink(self.statpath)
 
 def _load_all_from_pipes():
-    all_stats = defaultdict(float)
+    all_stats = defaultdict(int)
     if os.path.exists(STATS_ROOT):
         for filename in os.listdir(STATS_ROOT):
             pipe_path = os.path.join(STATS_ROOT, filename)
@@ -154,8 +153,12 @@ def _load_all_from_pipes():
                     _clear_pipe_open_timeout()
                     for line in pipe:
                         cleaned = line.strip()
-                        name, value = cleaned.rsplit(':', 1)
-                        all_stats[name.strip()] += float(value.strip())
+                        name, raw_value = cleaned.rsplit(':', 1)
+                        try:
+                            value = int(raw_value.strip())
+                        except ValueError:
+                            value = float(raw_value.strip())
+                        all_stats[name.strip()] += value
             except IOError, e:
                 if e.errno == INTERRUPTED_SYSTEM_CALL:
                     # Our timeout fired - no one is writing to this pipe.
