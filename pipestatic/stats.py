@@ -142,6 +142,7 @@ class _StatRecorder(threading.Thread):
             f.close()
             os.unlink(self.statpath)
 
+# FIXME The function below is begging to be refactored.
 def _load_all_from_pipes():
     all_stats = defaultdict(int)
     if os.path.exists(STATS_ROOT):
