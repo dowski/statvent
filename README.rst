@@ -1,0 +1,70 @@
+pipestatic
+==========
+
+pipestatic gives you three things:
+
+1. An API for recording data about your running program.
+2. A named pipe that you can `cat` or otherwise consume to read the stats.
+3. A simple web service that will read from *all* named pipes on a host and
+   serve the results as JSON.
+
+The API
+=======
+
+It's really simple. There are two functions for recording data.
+
+`pipestatic.stats.incr(name, value=1)`
+
+    Call it with the `name` of a stat and it will increment it. If it doesn't
+    exist yet, it will initialize it to the given `value` (defaults to `1`).
+
+    It's very useful for keeping tabs on events that happen within your apps.
+
+`pipestatic.stats.set(name, value)`
+
+    Call it with the `name` of a stat and a value. The stat will be set to that
+    value.
+
+    This function is useful for values that can fluctuate, like number of
+    concurrent users, connections to a database, winning streaks, etc.
+
+The names of stats just need to be byte strings. You can format them however
+you want, include whatever punctuation makes you happy, etc. Values can be
+integers or floats. Be aware that once you use a float, that stat will remain
+a float. It probably doesn't matter that much, but now you know.
+
+The Named Pipe
+==============
+
+Notice that there is no mention of an API for reading stats. That's because
+the creation and consumption of your application's statistical data should be
+decoupled. The decoupling is accomplished by writing the data out to a named
+pipe.
+
+At this point the pipes are always located in `/tmp/stats-pipe/` and are named
+`<pid>.stats` where `<pid>` is the UNIX process ID that is writing data into
+that named pipe.
+
+Each stat is written to its own line in the named pipe. The name of the stat and
+the current value are separated by a colon `:` followed by a space. The value
+follows and is either a floating point value or an integer value. Then there is
+a newline character. Here's an example::
+
+    a.b.c.d: 42
+    My Nice Stat: 123.45
+    another[one]: 0
+
+You can peek at the current state of your app by running `cat` against the
+named pipe, or have a process that does that regularly and inserts the results
+into a database to track the data over time.
+
+The Web Service
+===============
+
+If you don't want to mess with consuming a weird plain-text format like you get
+from the named pipe, and you want to collect stats from more than one process
+on a host, the JSON web service might interest you.
+
+It will sum the values of all stats and serve them up as JSON. Try running
+`pipestatic/stats.py` as a script to see it in action. I'll make a proper
+script out of it soon but that's what's there right now.
