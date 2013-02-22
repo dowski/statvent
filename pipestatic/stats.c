@@ -6,11 +6,12 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <pthread.h>
+#include <string.h>
 
 typedef enum stat_type {STAT_TYPE_DOUBLE, STAT_TYPE_LONG} stat_type;
 typedef struct pipestat {
     stat_type type;
-    const char *name;
+    char name[256];
     union {
         double double_value;
         long long_value;
@@ -28,13 +29,13 @@ static int n_stats = 0;
 static pipestat *all_stats[STAT_MAX];
 
 pipestat *
-init_stat(const char *name, stat_type t)
+init_stat(char *name, stat_type t)
 {
     pipestat *ps;
     if (!(ps = malloc(sizeof(pipestat)))) {
         return NULL;
     }
-    ps->name = name;
+    strncpy(&(ps->name[0]), name, 256);
     ps->type = t;
     switch (t) {
         case STAT_TYPE_LONG :
