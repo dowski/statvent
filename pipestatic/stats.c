@@ -9,33 +9,22 @@
 #include <string.h>
 #include <assert.h>
 
-typedef enum stat_type {STAT_TYPE_DOUBLE, STAT_TYPE_LONG} stat_type;
-typedef struct pipestat {
-    stat_type type;
-    char name[256];
-    union {
-        double double_value;
-        long long_value;
-    } value;
-} pipestat;
+#include "stats.h"
 
 #define STAT_MAX 64
 #define STAT_OUTPUT_BYTES 8192
 
-#define STAT_INCRV(stat, v) stat->type == STAT_TYPE_DOUBLE ? stat_incrv_d(stat, v) : stat_incrv_l(stat, v)
-#define STAT_SET(stat, v) stat->type == STAT_TYPE_DOUBLE ? stat_set_d(stat, v) : stat_set_l(stat, v)
-
 static int n_stats = 0;
 static pipestat *all_stats[STAT_MAX];
 
-void 
+void
 stat_incr(pipestat *stat)
 {
     switch(stat->type) {
         case STAT_TYPE_DOUBLE :
            stat->value.double_value++;
            break;
-        case STAT_TYPE_LONG : 
+        case STAT_TYPE_LONG :
            stat->value.long_value++;
            break;
     }
@@ -159,27 +148,4 @@ init_stats()
 {
     pthread_t stats_thread = {0};
     pthread_create(&stats_thread, NULL, stats_loop, NULL);
-}
-
-
-int
-main(int argc, char **argv)
-{
-    init_stats();
-
-    int i;
-    pipestat *ticks = init_stat("my.ticks", STAT_TYPE_DOUBLE);
-    pipestat *tocks = init_stat("my.tocks", STAT_TYPE_LONG);
-
-    stat_incr(ticks);
-    for (i=0;i<10;++i) {
-        STAT_INCRV(tocks, 2);
-        stat_incrv_d(ticks, 1.5);
-    }
-    stat_incr(tocks);
-    while (1) {
-        sleep(1);
-        stat_incr(ticks);
-    }
-    return 0;
 }
