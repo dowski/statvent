@@ -148,13 +148,20 @@ void *stats_loop(void *unused)
     }
 }
 
+void
+init_stats()
+{
+    pthread_t stats_thread = {0};
+    pthread_create(&stats_thread, NULL, stats_loop, NULL);
+}
+
+
 int
 main(int argc, char **argv)
 {
-    int i;
-    pthread_t stats_thread = {0};
+    init_stats();
 
-    pthread_create(&stats_thread, NULL, stats_loop, NULL);
+    int i;
     pipestat *ticks = init_stat("my.ticks", STAT_TYPE_DOUBLE);
     pipestat *tocks = init_stat("my.tocks", STAT_TYPE_LONG);
 
@@ -169,4 +176,3 @@ main(int argc, char **argv)
     }
     return 0;
 }
-
