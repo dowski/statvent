@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <string.h>
+#include <assert.h>
 
 typedef enum stat_type {STAT_TYPE_DOUBLE, STAT_TYPE_LONG} stat_type;
 typedef struct pipestat {
@@ -20,6 +21,9 @@ typedef struct pipestat {
 
 #define STAT_MAX 64
 #define STAT_OUTPUT_BYTES 8192
+
+#define STAT_INCRV(stat, v) stat->type == STAT_TYPE_DOUBLE ? stat_incrv_d(stat, v) : stat_incrv_l(stat, v)
+#define STAT_SET(stat, v) stat->type == STAT_TYPE_DOUBLE ? stat_set_d(stat, v) : stat_set_l(stat, v)
 
 static int n_stats = 0;
 static pipestat *all_stats[STAT_MAX];
@@ -38,29 +42,31 @@ stat_incr(pipestat *stat)
 }
 
 void
-stat_incrv(pipestat *stat, double v)
+stat_incrv_d(pipestat *stat, double v)
 {
-    switch(stat->type) {
-        case STAT_TYPE_DOUBLE :
-           stat->value.double_value += v;
-           break;
-        case STAT_TYPE_LONG : 
-           stat->value.long_value += (long)v;
-           break;
-    }
+    assert(stat->type == STAT_TYPE_DOUBLE);
+    stat->value.double_value += v;
 }
 
 void
-stat_set(pipestat *stat, void *v)
+stat_incrv_l(pipestat *stat, long v)
 {
-    switch(stat->type) {
-        case STAT_TYPE_DOUBLE :
-           stat->value.double_value = *(double *)v;
-           break;
-        case STAT_TYPE_LONG : 
-           stat->value.long_value = *(long *)v;
-           break;
-    }
+    assert(stat->type == STAT_TYPE_LONG);
+    stat->value.long_value += v;
+}
+
+void
+stat_set_d(pipestat *stat, double v)
+{
+    assert(stat->type == STAT_TYPE_DOUBLE);
+    stat->value.double_value = v;
+}
+
+void
+stat_set_l(pipestat *stat, long v)
+{
+    assert(stat->type == STAT_TYPE_LONG);
+    stat->value.long_value = v;
 }
 
 pipestat *
@@ -167,7 +173,8 @@ main(int argc, char **argv)
 
     stat_incr(ticks);
     for (i=0;i<10;++i) {
-        stat_incrv(tocks, 2);
+        STAT_INCRV(tocks, 2);
+        stat_incrv_d(ticks, 1.5);
     }
     stat_incr(tocks);
     while (1) {
