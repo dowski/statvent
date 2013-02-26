@@ -20,13 +20,48 @@ typedef struct pipestat {
 
 #define STAT_MAX 64
 #define STAT_OUTPUT_BYTES 8192
-#define STAT_INCR(stat) stat->type == STAT_TYPE_DOUBLE ? stat->value.double_value++ : stat->value.long_value++
-#define STAT_INCRV(stat, v) stat->type == STAT_TYPE_DOUBLE ? (stat->value.double_value += (v)) : (stat->value.long_value += (v))
-#define STAT_SET(stat, v) stat->type == STAT_TYPE_DOUBLE ? stat->value.double_value = v : stat->value.long_value = v
-#define STAT_PRINT(stat) stat->type == STAT_TYPE_DOUBLE ? printf("%s: %f\n", stat->name, stat->value.double_value) : printf("%s: %ld\n", stat->name, stat->value.long_value)
 
 static int n_stats = 0;
 static pipestat *all_stats[STAT_MAX];
+
+void 
+stat_incr(pipestat *stat)
+{
+    switch(stat->type) {
+        case STAT_TYPE_DOUBLE :
+           stat->value.double_value++;
+           break;
+        case STAT_TYPE_LONG : 
+           stat->value.long_value++;
+           break;
+    }
+}
+
+void
+stat_incrv(pipestat *stat, double v)
+{
+    switch(stat->type) {
+        case STAT_TYPE_DOUBLE :
+           stat->value.double_value += v;
+           break;
+        case STAT_TYPE_LONG : 
+           stat->value.long_value += (long)v;
+           break;
+    }
+}
+
+void
+stat_set(pipestat *stat, void *v)
+{
+    switch(stat->type) {
+        case STAT_TYPE_DOUBLE :
+           stat->value.double_value = *(double *)v;
+           break;
+        case STAT_TYPE_LONG : 
+           stat->value.long_value = *(long *)v;
+           break;
+    }
+}
 
 pipestat *
 init_stat(char *name, stat_type t)
@@ -123,16 +158,14 @@ main(int argc, char **argv)
     pipestat *ticks = init_stat("my.ticks", STAT_TYPE_DOUBLE);
     pipestat *tocks = init_stat("my.tocks", STAT_TYPE_LONG);
 
-    STAT_INCR(ticks);
+    stat_incr(ticks);
     for (i=0;i<10;++i) {
-        STAT_INCRV(tocks, 2);
+        stat_incrv(tocks, 2);
     }
-    STAT_INCR(tocks);
-    STAT_PRINT(ticks);
-    STAT_PRINT(tocks);
+    stat_incr(tocks);
     while (1) {
         sleep(1);
-        STAT_INCR(ticks);
+        stat_incr(ticks);
     }
     return 0;
 }
