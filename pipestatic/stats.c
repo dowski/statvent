@@ -7,16 +7,9 @@
 #include <errno.h>
 #include <pthread.h>
 #include <string.h>
+#include <assert.h>
 
-typedef enum stat_type {STAT_TYPE_DOUBLE, STAT_TYPE_LONG} stat_type;
-typedef struct pipestat {
-    stat_type type;
-    char name[256];
-    union {
-        double double_value;
-        long long_value;
-    } value;
-} pipestat;
+#include "stats.h"
 
 #define STAT_MAX 64
 #define STAT_OUTPUT_BYTES 8192
@@ -24,43 +17,45 @@ typedef struct pipestat {
 static int n_stats = 0;
 static pipestat *all_stats[STAT_MAX];
 
-void 
+void
 stat_incr(pipestat *stat)
 {
     switch(stat->type) {
         case STAT_TYPE_DOUBLE :
            stat->value.double_value++;
            break;
-        case STAT_TYPE_LONG : 
+        case STAT_TYPE_LONG :
            stat->value.long_value++;
            break;
     }
 }
 
 void
-stat_incrv(pipestat *stat, double v)
+stat_incrv_d(pipestat *stat, double v)
 {
-    switch(stat->type) {
-        case STAT_TYPE_DOUBLE :
-           stat->value.double_value += v;
-           break;
-        case STAT_TYPE_LONG : 
-           stat->value.long_value += (long)v;
-           break;
-    }
+    assert(stat->type == STAT_TYPE_DOUBLE);
+    stat->value.double_value += v;
 }
 
 void
-stat_set(pipestat *stat, void *v)
+stat_incrv_l(pipestat *stat, long v)
 {
-    switch(stat->type) {
-        case STAT_TYPE_DOUBLE :
-           stat->value.double_value = *(double *)v;
-           break;
-        case STAT_TYPE_LONG : 
-           stat->value.long_value = *(long *)v;
-           break;
-    }
+    assert(stat->type == STAT_TYPE_LONG);
+    stat->value.long_value += v;
+}
+
+void
+stat_set_d(pipestat *stat, double v)
+{
+    assert(stat->type == STAT_TYPE_DOUBLE);
+    stat->value.double_value = v;
+}
+
+void
+stat_set_l(pipestat *stat, long v)
+{
+    assert(stat->type == STAT_TYPE_LONG);
+    stat->value.long_value = v;
 }
 
 pipestat *
@@ -148,25 +143,9 @@ void *stats_loop(void *unused)
     }
 }
 
-int
-main(int argc, char **argv)
+void
+init_stats()
 {
-    int i;
     pthread_t stats_thread = {0};
-
     pthread_create(&stats_thread, NULL, stats_loop, NULL);
-    pipestat *ticks = init_stat("my.ticks", STAT_TYPE_DOUBLE);
-    pipestat *tocks = init_stat("my.tocks", STAT_TYPE_LONG);
-
-    stat_incr(ticks);
-    for (i=0;i<10;++i) {
-        stat_incrv(tocks, 2);
-    }
-    stat_incr(tocks);
-    while (1) {
-        sleep(1);
-        stat_incr(ticks);
-    }
-    return 0;
 }
-
