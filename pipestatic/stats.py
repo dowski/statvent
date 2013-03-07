@@ -137,7 +137,7 @@ class _StatRecorder(threading.Thread):
             for name, value in get_all().iteritems():
                 if isinstance(value, float):
                     f.write('%s: %f\n' % (name, value))
-                elif isinstance(value, int):
+                elif isinstance(value, (int, long)):
                     f.write('%s: %d\n' % (name, value))
             f.close()
             os.unlink(self.statpath)
