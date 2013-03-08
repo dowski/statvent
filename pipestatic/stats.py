@@ -3,8 +3,8 @@
 The goal of this module is to make it as simple as possible to record stats
 about your running application.
 
-The stats are written to a named pipe. The named pipes are stored in
-/tmp/stats-pipe. They are named "<PID>.stats". Integer and floating point
+The stats are written to a named pipe. By default, the named pipes are stored
+in /tmp/stats-pipe. They are named "<PID>.stats". Integer and floating point
 values are supported.
 
 The API is simple. You can `incr` or `set` values. Use the standard `cat`
@@ -34,7 +34,6 @@ from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from collections import defaultdict
 
 
-STATS_ROOT = '/tmp/stats-pipe'
 INTERRUPTED_SYSTEM_CALL = 4
 PIPE_OPEN_TIMEOUT = 0.1
 
@@ -61,6 +60,10 @@ def get_all():
 # Deployer API
 # ============
 
+config = {
+    'pipe_dir': '/tmp/stats-pipe',
+}
+
 def start_recorder():
     """Starts a dedicated thread for handling the stats named pipe.
 
@@ -71,7 +74,7 @@ def start_recorder():
     global _recorder
 
     try:
-        os.mkdir(STATS_ROOT)
+        os.mkdir(config['pipe_dir'])
     except OSError, e:
         if e.errno == 17:
             # Directory already exists.
@@ -120,7 +123,7 @@ class _StatRecorder(threading.Thread):
     def __init__(self):
         super(_StatRecorder, self).__init__()
         default_filename = "%s.stats" % (os.getpid())
-        self.statpath = os.path.join(STATS_ROOT, default_filename)
+        self.statpath = os.path.join(config['pipe_dir'], default_filename)
 
     def run(self):
 
@@ -145,9 +148,9 @@ class _StatRecorder(threading.Thread):
 # FIXME The function below is begging to be refactored.
 def _load_all_from_pipes():
     all_stats = defaultdict(int)
-    if os.path.exists(STATS_ROOT):
-        for filename in os.listdir(STATS_ROOT):
-            pipe_path = os.path.join(STATS_ROOT, filename)
+    if os.path.exists(config['pipe_dir']):
+        for filename in os.listdir(config['pipe_dir']):
+            pipe_path = os.path.join(config['pipe_dir'], filename)
             _set_pipe_open_timeout(PIPE_OPEN_TIMEOUT)
             try:
                 with open(pipe_path) as pipe:
@@ -202,7 +205,12 @@ def main():
         '-l', '--path',  help="The HTTP path for serving stats.",
         default="/stats",
     )
+    parser.add_option(
+        '-d', '--pipe-dir', help="The directory where the stats pipes live.",
+    )
     opts, args = parser.parse_args()
+    if opts.pipe_dir:
+        config['pipe_dir'] = opts.pipe_dir
     http_stat_publisher(opts.ip, opts.port, opts.path)
 
 if __name__ == '__main__':
