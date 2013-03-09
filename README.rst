@@ -11,7 +11,7 @@ pipestatic gives you three things:
 The API
 =======
 
-It's really simple. There are two functions for recording data.
+It's really simple. There are three functions for recording data.
 
 `pipestatic.stats.incr(name, value=1)`
 
@@ -28,10 +28,25 @@ It's really simple. There are two functions for recording data.
     This function is useful for values that can fluctuate, like number of
     concurrent users, connections to a database, winning streaks, etc.
 
+`pipestatic.stats.record(name, value, format_func=str.format)`
+
+    Call it with the `name` of a stat and a value. By default the `name`
+    must include a `{0}` format placeholder. Internally, the value is
+    appended to a deque. When the pipe is read, the stats recorder will
+    calculate some aggregate statistics from the contents of the deque
+    (by default a few percentile breaks and the mean).
+    
+    **If your stat name scheme conflicts with the default `str.format` function
+    you can provide your own function to format the stat name to include the
+    calculated percentile labels.**
+
 The names of stats just need to be byte strings. You can format them however
-you want, include whatever punctuation makes you happy, etc. Values can be
-integers or floats. Be aware that once you use a float, that stat will remain
-a float. It probably doesn't matter that much, but now you know.
+you want, include whatever punctuation makes you happy, etc. If you want
+percentiles or other calculated stats (using `pipestatic.stats.record`), you'll
+need to take a bit of extra care when formatting your stat names.
+
+Values can be integers or floats. Be aware that once you use a float, that stat
+will remain a float. It probably doesn't matter that much, but now you know.
 
 The Named Pipe
 ==============
@@ -41,9 +56,11 @@ the creation and consumption of your application's statistical data should be
 decoupled. The decoupling is accomplished by writing the data out to a named
 pipe.
 
-At this point the pipes are always located in `/tmp/stats-pipe/` and are named
+By default the pipes are located in `/tmp/stats-pipe/` and are named
 `<pid>.stats` where `<pid>` is the UNIX process ID that is writing data into
-that named pipe.
+that named pipe. You can change the location where pipes are written/read by
+setting the `pipestatic.stats.config['pipe_dir']` path. Make sure your
+processes have permission to write there though.
 
 Each stat is written to its own line in the named pipe. The name of the stat and
 the current value are separated by a colon `:` followed by a space. The value
