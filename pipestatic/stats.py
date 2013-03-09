@@ -54,12 +54,14 @@ def incr(name, value=1):
     """
     _stats[name] += value
 
-def record(name, value):
+def record(name, value, format_func=str.format):
     """Record the given name by value,
        to be pre-processed by the StatsRecorder's
        calculator before being set
     """
     _deque[name].append(value)
+    if name not in _formatters:
+        _formatters[name] = format_func
 
 def get_all():
     """Return a dictionary of the recorded stats."""
@@ -121,26 +123,23 @@ def http_stat_publisher(ip='', port=7828, path='/stats'):
 # ============
 
 _stats = defaultdict(int)
-_deque = None
+_deque = defaultdict(lambda: deque(list(), 100))
 _recorder = None
+_formatters = {}
 
-def splice(name, label):
-    i = name.index('[')
-    basename = '.'.join([name[:i], label])
-    tags = name[i:]
-    return basename + tags
 
 def basic_percentiles(name, vals):
     n_vals = len(vals)
+    format_func = _formatters[name]
     PERCENTILES = [(50, "median"), (95, "95th"), (99, "99th"), (100, "100th")]
 
     for n,label in PERCENTILES:
         index = int(math.floor(n_vals * (n * 0.01))) - 1
         if index < 0:
             index = 0
-        yield (splice(name, label), vals[index] if vals else 0.0)
+        yield (format_func(name, label), vals[index] if vals else 0.0)
     if n_vals:
-        yield (splice(name, "mean"), sum(vals) / n_vals)
+        yield (format_func(name, "mean"), sum(vals) / n_vals)
 
 
 class _StatRecorder(threading.Thread):
@@ -151,8 +150,7 @@ class _StatRecorder(threading.Thread):
         self.statpath = os.path.join(STATS_ROOT, default_filename)
         self.calculator = calculator
 
-        global _deque
-        _deque = defaultdict(lambda: deque(list(), deque_size))
+        _deque.default_factory = (lambda: deque(list(), deque_size))
 
     def set_deque(self):
         for name, vals in _deque.iteritems():
