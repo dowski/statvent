@@ -1,9 +1,9 @@
-"""Example program to demonstrate pipestatic usage."""
+"""Example program to demonstrate statvent usage."""
 import os
 import random
 import time
 
-from pipestatic import stats
+from statvent import stats
 
 
 def main():
