@@ -1,7 +1,7 @@
-pipestatic
+statvent
 ==========
 
-pipestatic gives you three things:
+statvent gives you three things:
 
 1. An API for recording data about your running program.
 2. A named pipe that you can `cat` or otherwise consume to read the stats.
@@ -13,14 +13,14 @@ The API
 
 It's really simple. There are three functions for recording data.
 
-`pipestatic.stats.incr(name, value=1)`
+`statvent.stats.incr(name, value=1)`
 
     Call it with the `name` of a stat and it will increment it. If it doesn't
     exist yet, it will initialize it to the given `value` (defaults to `1`).
 
     It's very useful for keeping tabs on events that happen within your apps.
 
-`pipestatic.stats.set(name, value)`
+`statvent.stats.set(name, value)`
 
     Call it with the `name` of a stat and a value. The stat will be set to that
     value.
@@ -28,7 +28,7 @@ It's really simple. There are three functions for recording data.
     This function is useful for values that can fluctuate, like number of
     concurrent users, connections to a database, winning streaks, etc.
 
-`pipestatic.stats.record(name, value, format_func=str.format)`
+`statvent.stats.record(name, value, format_func=str.format)`
 
     Call it with the `name` of a stat and a value. By default the `name`
     must include a `{0}` format placeholder. Internally, the value is
@@ -42,7 +42,7 @@ It's really simple. There are three functions for recording data.
 
 The names of stats just need to be byte strings. You can format them however
 you want, include whatever punctuation makes you happy, etc. If you want
-percentiles or other calculated stats (using `pipestatic.stats.record`), you'll
+percentiles or other calculated stats (using `statvent.stats.record`), you'll
 need to take a bit of extra care when formatting your stat names.
 
 Values can be integers or floats. Be aware that once you use a float, that stat
@@ -59,7 +59,7 @@ pipe.
 By default the pipes are located in `/tmp/stats-pipe/` and are named
 `<pid>.stats` where `<pid>` is the UNIX process ID that is writing data into
 that named pipe. You can change the location where pipes are written/read by
-setting the `pipestatic.stats.config['pipe_dir']` path. Make sure your
+setting the `statvent.stats.config['pipe_dir']` path. Make sure your
 processes have permission to write there though.
 
 Each stat is written to its own line in the named pipe. The name of the stat and
@@ -83,5 +83,5 @@ from the named pipe, and you want to collect stats from more than one process
 on a host, the JSON web service might interest you.
 
 It will sum the values of all stats and serve them up as JSON. Try running
-`pipestatic/stats.py` as a script to see it in action. I'll make a proper
+`statvent/stats.py` as a script to see it in action. I'll make a proper
 script out of it soon but that's what's there right now.
