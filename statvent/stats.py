@@ -29,7 +29,10 @@ import traceback
 import urlparse
 import math
 
-import simplejson
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from collections import defaultdict, deque
@@ -107,13 +110,13 @@ def http_stat_publisher(ip='', port=7828, path='/stats'):
             if parsed.path == path:
                 collected_stats = _load_all_from_pipes()
                 status_code = 200
-                body = simplejson.dumps({
+                body = json.dumps({
                     'stats':collected_stats,
                     'timestamp':time.time(),
                 })
             else:
                 status_code = 400
-                body = simplejson.dumps({
+                body = json.dumps({
                     'message':'The requested resource was not found',
                     'path':parsed.path,
                 })
