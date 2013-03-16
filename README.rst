@@ -13,14 +13,14 @@ The API
 
 It's really simple. There are three functions for recording data.
 
-`statvent.stats.incr(name, value=1)`
+`statvent.incr(name, value=1)`
 
     Call it with the `name` of a stat and it will increment it. If it doesn't
     exist yet, it will initialize it to the given `value` (defaults to `1`).
 
     It's very useful for keeping tabs on events that happen within your apps.
 
-`statvent.stats.set(name, value)`
+`statvent.set(name, value)`
 
     Call it with the `name` of a stat and a value. The stat will be set to that
     value.
@@ -28,7 +28,7 @@ It's really simple. There are three functions for recording data.
     This function is useful for values that can fluctuate, like number of
     concurrent users, connections to a database, winning streaks, etc.
 
-`statvent.stats.record(name, value, format_func=str.format)`
+`statvent.record(name, value, format_func=str.format)`
 
     Call it with the `name` of a stat and a value. By default the `name`
     must include a `{0}` format placeholder. Internally, the value is
@@ -42,8 +42,8 @@ It's really simple. There are three functions for recording data.
 
 The names of stats just need to be byte strings. You can format them however
 you want, include whatever punctuation makes you happy, etc. If you want
-percentiles or other calculated stats (using `statvent.stats.record`), you'll
-need to take a bit of extra care when formatting your stat names.
+percentiles or other calculated stats (using `statvent.record`), you'll need to
+take a bit of extra care when formatting your stat names.
 
 Values can be integers or floats. Be aware that once you use a float, that stat
 will remain a float. It probably doesn't matter that much, but now you know.
