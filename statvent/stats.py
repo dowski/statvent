@@ -35,11 +35,13 @@ def incr(name, value=1):
     _stats[name] += value
 
 def record(name, value, format_func=str.format):
-    """Record the given name by value,
-       to be pre-processed by the StatsRecorder's
-       calculator before being set
+    """Record an instance of the value for the given stat name.
+
+    The `name` must have a "{0}" replacement token in it so aggregate
+    calculations have a chance to label the aggregate value.
+
     """
-    _deque[name].append(value)
+    _deques[name].append(value)
     if name not in _formatters:
         _formatters[name] = format_func
 
@@ -83,7 +85,7 @@ def start_recorder():
 # ============
 
 _stats = defaultdict(int)
-_deque = defaultdict(lambda: deque(list(), 100))
+_deques = defaultdict(lambda: deque(list(), 100))
 _recorder = None
 _formatters = {}
 
@@ -103,23 +105,27 @@ def basic_percentiles(name, vals):
 
 
 class _StatRecorder(threading.Thread):
-
     def __init__(self, calculator=basic_percentiles, deque_size=100):
         super(_StatRecorder, self).__init__()
         default_filename = "%s.stats" % (os.getpid())
         self.statpath = os.path.join(config['pipe_dir'], default_filename)
         self.calculator = calculator
 
-        _deque.default_factory = (lambda: deque(list(), deque_size))
+        _deques.default_factory = (lambda: deque(list(), deque_size))
 
-    def set_deque(self):
-        for name, vals in _deque.iteritems():
+    def set_deques(self):
+        # Does aggregate calculations on the values recorded in _deques and
+        # calls our `set` function to get them in the _stats dictionary for
+        # pipe output.
+        for name, vals in _deques.iteritems():
             vals = sorted(vals)
             for (metric, val) in self.calculator(name, vals):
+                # NOTE This call is *not* the builtin set type; its our own
+                # little API set function. An unfortunate collision that we run
+                # into on our way to a nice statvent API.
                 set(metric, val)
 
     def run(self):
-
         @atexit.register
         def cleanup():
             try:
@@ -130,7 +136,7 @@ class _StatRecorder(threading.Thread):
         while True:
             os.mkfifo(self.statpath)
             f = open(self.statpath, 'w')
-            self.set_deque()
+            self.set_deques()
             for name, value in get_all().iteritems():
                 if isinstance(value, float):
                     f.write('%s: %f\n' % (name, value))
