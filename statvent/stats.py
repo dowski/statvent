@@ -126,6 +126,8 @@ class _StatRecorder(threading.Thread):
                 set(metric, val)
 
     def run(self):
+        # Try and cleanup the named pipe after we exit. Not guaranteed to be
+        # called (in the case of a SIGKILL or machine crash or ...).
         @atexit.register
         def cleanup():
             try:
@@ -135,7 +137,10 @@ class _StatRecorder(threading.Thread):
 
         while True:
             os.mkfifo(self.statpath)
+
+            # NOTE: The thread blocks here until a proc opens the pipe to read.
             f = open(self.statpath, 'w')
+
             self.set_deques()
             for name, value in get_all().iteritems():
                 if isinstance(value, float):
