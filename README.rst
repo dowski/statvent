@@ -3,13 +3,13 @@ statvent
 
 statvent gives you three things:
 
-1. An API for recording data about your running program.
-2. A named pipe that you can `cat` or otherwise consume to read the stats.
+1. A developer API for recording metrics in your library or application.
+2. A deployer API that writes stats to a named pipe.
 3. A simple web service that will read from *all* named pipes on a host and
    serve the results as JSON.
 
-The API
-=======
+The Developer API
+=================
 
 It's really simple. There are three functions for recording data.
 
@@ -48,24 +48,33 @@ take a bit of extra care when formatting your stat names.
 Values can be integers or floats. Be aware that once you use a float, that stat
 will remain a float. It probably doesn't matter that much, but now you know.
 
-The Named Pipe
-==============
+The Deployer API
+================
 
-Notice that there is no mention of an API for reading stats. That's because
-the creation and consumption of your application's statistical data should be
-decoupled. The decoupling is accomplished by writing the data out to a named
-pipe.
+Notice that there is no mention of an API for reading stats. That's because the
+creation and consumption of your application's metrics should be decoupled. The
+decoupling is accomplished by writing the data out to a named pipe.
+
+`statvent.start_recorder()`
+
+    Starts a thread that writes the application stats to a named pipe.
+
+    The thread blocks on the open system call won't spend any of your
+    application's resources until another process opens the pipe for reading.
+
+The Named Pipe
+--------------
 
 By default the pipes are located in `/tmp/stats-pipe/` and are named
-`<pid>.stats` where `<pid>` is the UNIX process ID that is writing data into
-that named pipe. You can change the location where pipes are written/read by
-setting the `statvent.stats.config['pipe_dir']` path. Make sure your
-processes have permission to write there though.
+`<pid>.stats` where `<pid>` is the UNIX process ID that is writing data
+into that named pipe. You can change the location where pipes are
+written/read by setting the `statvent.stats.config['pipe_dir']` path. Make
+sure your processes have permission to write there though.
 
-Each stat is written to its own line in the named pipe. The name of the stat and
-the current value are separated by a colon `:` followed by a space. The value
-follows and is either a floating point value or an integer value. Then there is
-a newline character. Here's an example::
+Each stat is written to its own line in the named pipe. The name of the
+stat and the current value are separated by a colon `:` followed by a
+space. The value follows and is either a floating point value or an integer
+value. Then there is a newline character. Here's an example::
 
     a.b.c.d: 42
     My Nice Stat: 123.45
@@ -83,5 +92,4 @@ from the named pipe, and you want to collect stats from more than one process
 on a host, the JSON web service might interest you.
 
 It will sum the values of all stats and serve them up as JSON. Try running
-`statvent/stats.py` as a script to see it in action. I'll make a proper
-script out of it soon but that's what's there right now.
+`python -m statvent.web` as a script to see it in action. 
