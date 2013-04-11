@@ -26,13 +26,21 @@ def set(name, value):
     """Set the given stat name to value.
 
     """
-    _stats[name] = value
+    _stats_lock.acquire()
+    try:
+        _stats[name] = value
+    finally:
+        _stats_lock.release()
 
 def incr(name, value=1):
     """Increment the given stat name by value.
 
     """
-    _stats[name] += value
+    _stats_lock.acquire()
+    try:
+        _stats[name] += value
+    finally:
+        _stats_lock.release()
 
 def record(name, value, format_func=str.format):
     """Record an instance of the value for the given stat name.
@@ -41,9 +49,13 @@ def record(name, value, format_func=str.format):
     calculations have a chance to label the aggregate value.
 
     """
-    _deques[name].append(value)
-    if name not in _formatters:
-        _formatters[name] = format_func
+    _stats_lock.acquire()
+    try:
+        _deques[name].append(value)
+        if name not in _formatters:
+            _formatters[name] = format_func
+    finally:
+        _stats_lock.release()
 
 def get_all():
     """Return a dictionary of the recorded stats."""
@@ -80,10 +92,10 @@ def start_recorder():
         _recorder.setDaemon(True)
         _recorder.start()
 
-
 # Private Code
 # ============
 
+_stats_lock = threading.Lock()
 _stats = defaultdict(int)
 _deques = defaultdict(lambda: deque(list(), 100))
 _recorder = None
